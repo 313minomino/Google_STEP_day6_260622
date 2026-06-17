@@ -60,7 +60,7 @@ def distance(cities:list,node1:int,node2:int) -> float:
     return distance
 
 # 2-opt
-def two_opt(tour,cities):
+def two_opt(tour:list,cities:list) -> list:
     improved = False
     # エッジを1つ取り出す
     for i in range(len(tour)):
