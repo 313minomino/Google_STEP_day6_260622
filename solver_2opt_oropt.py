@@ -29,7 +29,15 @@ def solve(cities:list) -> list:
     improved = True
     while improved == True:
         improved = two_opt(tour, cities)
-    # print("変更終了")
+
+    # or-opt
+    improved = True
+    while improved:
+        improved_tour = or_opt(tour, cities)
+        if improved_tour == tour:
+            break
+        tour = improved_tour
+        
     return tour
 
 
@@ -88,6 +96,42 @@ def two_opt(tour:list,cities:list) -> list:
                 tour[i+1:j+1] = tour[i+1:j+1][::-1]
                 improved = True
     return improved
+
+# or-opt
+def or_opt(tour:list, cities:list) -> list:
+    improved = False
+
+    # 切り取る区間を決める
+    for size in [1,2,3]:
+        for i in range(len(tour)-size+1):
+            section_candidate = tour[i:i+size]# 切り取る部分
+            tour_candidate = tour[:i] + tour[i+size:]# 残りの部分
+
+            if len(tour_candidate) == 0:
+                continue
+
+            # 切り取る部分
+            first = tour[i]
+            last = tour[i + size -1]
+            # 切り取る部分の前後
+            prev = tour[i - 1]
+            next = tour[(i + size) % len(tour)]
+
+            # 切り取った部分 (section_candidate) を tour_candidate のどこに挿入するか。0なら先頭。
+            for j in range(len(tour_candidate)):
+                # 挿入場所
+                insert_prev = tour_candidate[j - 1]
+                insert_next = tour_candidate[j]
+
+                # 変更前の距離
+                old_distance = distance(cities, prev, first) + distance(cities, last, next) + distance(cities, insert_prev, insert_next)
+                # 変更する候補の距離
+                new_distance = distance(cities, prev, next) + distance(cities, insert_prev, first) + distance(cities, last, insert_next)
+
+                if new_distance < old_distance:
+                    return tour_candidate[:j] + section_candidate + tour_candidate[j:]
+    return tour
+
     
 if __name__ == '__main__':
     assert len(sys.argv) > 1
