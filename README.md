@@ -1,259 +1,80 @@
-# Google STEP 2026: Travelling Salesperson Problem Challenges
+# 第５回　Google Mapsはすごい（経路最適化）
 
-Originally By: [Hayato Ito](https://github.com/hayatoito) (hayato@google.com)  
-2020-2026 Versions By: [Hugh O'Cinneide](https://github.com/hkocinneide)
-(hughoc@google.com), [Hiromu Ikeda](https://github.com/rombot98) (hiromu@google.com) and [Ayaka Kinoshita](https://github.com/oribe1115) (oribe@google.com)
+## コードの目的
+- N個のノードを順に全て時の最短のルートを発見し、その距離を出力する
+- 独自のヒューリスティックを用いて最適なノードを発見する
 
-## Quick Links
+## 独自のヒューリスティック
+- 自分が最短経路を直感的に考える時、以下の図のように考えて①に行くか②に行くかを考えていることに気づいた。
+![fig1](images/fig1.png")
+- ①に行くか②に行くかを考える時、
+  - ①だとCのためにわざわざ左に戻っている
+  - ②だとBのためにわざわざ上に戻っている
+- ①と②のどちらが最短かを考える時、戻っている長さで比較していた。
+- 例えばこの図であれば、②の方が最短形をになると考えた。
+![fig1](images/fig2.png")
 
-- [Scoreboard]
+- これをコードに落とし込む時以下のステップで行うことにした
+  - まずは各エッジをx,y軸に投射する
+    ![fig1](images/fig3.png")
+  - その投射ができるだけ重複しないようなノードを選択していく
+- 例えばこの例だと①より②の方が3回以上通っている数が少ないので、②の方が最短経路だと判断する。
 
-[scoreboard]:
-  https://docs.google.com/spreadsheets/d/1uOhewb9KtMENU5AyLF8VcsyosQGOfkeh-Kka8M-DYcI/edit?usp=sharing&resourcekey=0-w2dZASN1e-X_gcl8vicB4Q
-[github issues]: https://github.com/hayatoito/google-step-tsp/issues
 
-## Problem Statement
+## アルゴリズム
+### 次に辿るべきノードを見つけ、全てのノードを回るまで見つける
+`def solve(cities:list) -> list:`  
+たどったノードは、訪れたノードを記録するvisitedと、最終的にたどったパスを記録するtourに追加する。
 
-In this assignment, you will design an algorithm to solve a fundamental problem
-faced by every travelling salesperson, called _Travelling Salesperson Problem_
-(TSP). I’ll explain TSP in the onsite class. TSP is very famous problem. See
-[Wikipedia](http://en.wikipedia.org/wiki/Travelling_salesman_problem). You can
-understand the problem without any difficulties.
+### 次に行くべきノードを探す
+`def bestscore_node(current:int, cities:list, visited:set, used_edge:list) -> int:`
+- まず候補都市の絞り込む
+- 距離が近い上位10個のノードに対してスコアを計算する
+- 探索した中で最もスコアが低いものを次に行くべきノードとする
 
-Quoted from
-[Wikipedia](http://en.wikipedia.org/wiki/Travelling_salesman_problem):
+#### 候補都市の絞り込み
+- 現在の都市から未訪問の都市までの距離を計算し、距離が近い上位10都市を候補とする
+- これにより、全ての未訪問都市を評価する場合と比較して計算量を削減しつつ、近傍探索の性質を維持している
 
-> The travelling salesman problem (also called the travelling salesperson problem or TSP) 
-> asks the following question: Given a list of cities and the distances between each pair 
-> of cities, what is the shortest possible route that visits each city exactly once and 
-> returns to the origin city?
+##### 2点間の距離を求める
+`def distance(cities:list,node1:int,node2:int) -> float:`
+- 二点間の距離はこのように計算する<br>
+`distance = ((x1 - x2)**2 + (y1 - y2)**2) ** 0.5`
 
-## Assignment
+#### スコアの付け方 
+- ①ノードまでの距離、②エッジをx,y軸に投射した際の重複、③直前の移動方向と次に移動しようとしている方向とのなす角の3つの要素に、それぞれ重みをつけた合計をscoreにし、scoreが低いものを次のノードに選ぶ
+- 探索の序盤と終盤では望ましい経路が異なるため、探索の進行度(progress)に応じて、序盤は重複回避を重視、終盤は折り返し回避を重視するように重みを変化させている。
+```python
+distance = distance_calc(cities, current, i)
+overlap_penalty = (calc_overlap_penalty(current,j,cities,used_edge))**1.5
+turn_penalty = calc_turn_penalty(current,j,cities,used_edge)
 
-The assignment is hosted on GitHub,
-[https://github.com/hayatoito/google-step-tsp](https://github.com/hayatoito/google-step-tsp).
+# ペナルティの重みづけ
+progress = len(visited) / len(cities)
+OVERLAP_WEIGHT = 1 - 0.8 * progress
+TURN_WEIGHT    = 0.3 + 0.7 * progress
 
-You can download the assignment by `git clone`:
-
-```shellsession
-git clone https://github.com/hayatoito/google-step-tsp
+# スコアを計算
+score = distance*(1+OVERLAP_WEIGHT * overlap_penalty + TURN_WEIGHT * turn_penalty)
 ```
 
-The repository includes sample scripts written in Python 3, rather than in
-Python 2. It’s your responsibility to install Python 3 if you want to run the
-scripts, though running the scripts is not mandatory.
+#### 経路の重複ペナルティ
+`def calc_overlap_penalty(current:int,candidate:int,cities:list,used_edges:list) -> float:`
+- 新しく追加しようとしている辺と、過去に通過した辺との重複度を計算する
+- 各辺を x 軸と y 軸へ射影し、区間の重複長を求めることで、同じ領域を何度も往復する経路を抑制する
+- 重複部分を計算する処理は以下の関数で行われている
+`def edge_overlap(cities:list, edge1:tuple,edge2:tuple):`
+`def overlap_length(node1_interval, node2_interval) -> float:`
 
-There are 7 challenges of TSP in the assignment, from N = 5 to N = 2048:
+#### 折り返しペナルティ
+`def calc_turn_penalty(current, candidate, cities, used_edges) -> float:`
+- 直前の移動方向と、次に移動しようとしている方向とのなす角を計算し向きが変わるほど大きなペナルティを与える
+ - 角度が0°   → 0
+ - 角度が90°  → 500
+ - 角度が180° → 1000
+- ベクトルの内積を用いて角度を計算した
 
-| Challenge   | N (= the number of cities) | Input file  | Output file  |
-| ----------- | -------------------------: | ----------- | ------------ |
-| Challenge 0 |                          5 | input_0.csv | output_0.csv |
-| Challenge 1 |                          8 | input_1.csv | output_1.csv |
-| Challenge 2 |                         16 | input_2.csv | output_2.csv |
-| Challenge 3 |                         64 | input_3.csv | output_3.csv |
-| Challenge 4 |                        128 | input_4.csv | output_4.csv |
-| Challenge 5 |                        512 | input_5.csv | output_5.csv |
-| Challenge 6 |                       2048 | input_6.csv | output_6.csv |
-
-See _Data Format Specification_ section to know the format of input and output
-files.
-
-### Your tasks
-
-- Write a program, solving each TSP by designing and implementing an algorithm.
-- Overwrite each output file, `output_{0-6}.csv`, with the output of your
-  program.
-- Enter the _path length_ of your output in the [scoreboard], for each
-  challenge. Needless to say, a shorter path is better then a longer path.
-
-### Visualizer
-
-The demo page of the visualizer is
-[here](https://oribe.work/google-step-tsp/visualizer/build/default/).
-
-The assignment includes a helper Web page,
-`visualizer/build/default/index.html`, which visualizes your solutions. You need
-to run a HTTP server on your local machine to access the visualizer. Any HTTP
-server is okay. If you are not sure how to run a web server, use the following
-command to run the HTTP server. Make sure that you are in the top directory of
-the assignment before running the command.
-
-```shellsession
-python -m http.server # For Python 3
-python -m SimpleHTTPServer 8000 # If you don’t want to install Python 3
-```
-
-Then, open a browser and navigate to the
-[http://localhost:8000/visualizer/build/default/](http://localhost:8000/visualizer/build/default/).
-
-Visualizer was only tested by Google Chrome. Using the visualizer is up-to you.
-You don’t have to use the visualizer to finish the assignment. The visualizer is
-provided for the purpose of helping you understand the problem.
-
-See
-[GitHub Help](https://help.github.com/articles/configuring-a-publishing-source-for-github-pages/)
-to know how to enable GitHub pages on your repository.
-
-## Data Format Specification
-
-### Input Format
-
-The input consists of `N + 1` lines. The first line is always `x,y`. It is
-followed by `N` lines, each line represents an i-th city’s location, point
-`xi,yi` where `xi`, `yi` is a floating point number.
-
-```
-x,y
-x_0,y_0
-x_1,y_1
-…
-x_N-1,y_N-1
-```
-
-### Output Format
-
-Output has `N + 1` lines. The first line should be “index”. It is followed by
-`N` lines, each line is the index of city, which represents the visitation
-order.
-
-```
-index
-v_0
-v_1
-v_2
-…
-v_N-1
-```
-
-### Example (Challenge 0, N = 5)
-
-Input Example:
-
-```
-x,y
-214.98279057984195,762.6903632435094
-1222.0393903625825,229.56212316547953
-792.6961393471055,404.5419583098643
-1042.5487563564207,709.8510160219619
-150.17533883877582,25.512728869805677
-```
-
-Output (Solution) Example:
-
-```
-index
-0
-2
-3
-1
-4
-```
-
-These formats are requirements for the visualizer, which can take only properly
-formatted CSV files as input.
-
-## Schedule
-
-### The class begins: 2026-06-12 (Fri) 5:00pm
-
-I'll explain the "TSP" assignment.
-
-Action items on Friday:
-
-1.  Fill out your name in the first column of the [Scoreboard]:
-
-2.  Fork this repository into your own GitHub.
-
-### Coding: From: 2026-06-12 (Fri) 8:00pm - To: 2026-06-19 (Fri) 5:00pm
-
-For the next two weeks, you are expected to improve your algorithm and enter
-the score in the [scoreboard] manually for each challenge. You can update the
-score as many times as needed. I highly recommend you to update your score
-whenever you can find a shorter path.
-
-Feel free to submit, or continue working on this assignment past class 7. I
-will go over the results in class 7, so if you want to show off how well
-you did on the leaderboard, submit by classtime!
-
-## What’s included in the assignment
-
-To help you understand the problem, there are some sample scripts / resources in
-the assignment, including, but not limited to:
-
-- `solver_random.py` - Sample stupid solver. You never lose to this stupid one.
-- `sample/random_{0-6}.csv` - Sample output files by solver_random.py.
-  this definitely.
-- `sample/sa_{0-6}.csv` - Yet another sample output files. I expect all of you
-  will beat this one too. The solver itself is not included intentionally.
-- `output_{0-6}.csv` - You should overwrite these files with your program's
-  output.
-- `output_verifier.py` - Try to validate your output files and print the path
-  length.
-- `input_generator.py` - Python script which was used to create input files,
-  `input_{0-6}.csv`
-- `visualizer/` - The directory for visualizer.
-
-Details are intentionally omitted here. It is your responsibility to understand
-the contents of the repository.
-
-## Code of Conduct
-
-- Since we are competing for the best algorithm, please do not cheat:
-- You can get an assistance only from other STEP students, mentors, or
-  lecturers..
-- Don't get any assistance from any other people (e.g. your friends, professors,
-  etc).
-- Use your best judgment when using third party libraries. If it will be
-  non-trivial for a reviewer to understand the library, it may be doing too
-  much work that you could be learning from.
-- It is okay to use built-in libraries provided by programming languages, of
-  course.
-
-## Tips for Development
-
-The following tips might be helpful:
-
-- Commit often, and push often. Small commits are easy to review, and are
-  unlikely to conflict others' changes.
-
-- Your code should be consistency well formatted. Please make sure to use
-  appropriate code formatter, if you are not in confident. Don't try to format
-  your code by yourself if a tool can do that.
-
-## FAQ
-
-This FAQ includes the questions and the answers in the past years, as is. Some
-Q/A might be obsolete for this year.
-
-- Q. I found a typo in this document.
-
-- A. Please feel free to send a
-  [pull request](https://help.github.com/articles/using-pull-requests/), as a
-  practice, or file an issue at [GitHub Issues] if you are not confident using
-  git.
-
-- Q. Do I have to use the same code for every challenge?
-
-- A. No.
-
-- Q. Is there any limitation of machine resources I can use? Can I use multiple
-  machines? Can I run my algorithm 24 hours?
-
-- A. No limitation at all. You can use any machine resources you have.
-
-- Q. It seems that this document and the scoreboard are publicly viewable. Is
-  this intentional?
-
-- A. Yes. I am a fan of transparency. If you have any concerns, please let me
-  know that. I’ll honor your preference. Don’t enter any confidential
-  information.
-
-- Q. Can I look other student's repository?
-
-- A. Yes. Don't try to hide anything. Eveything should be open. It's fine to
-  exchange ideas between students, or borrow their ideas.
-
-## Acknowledgments
-
-This assignment is heavily inspired by
-[Discrete Optimization Course on Coursera](https://www.coursera.org/learn/discrete-optimization).
+#### 孤立ノードの先読み評価
+- 候補都市の周辺に存在する未訪問都市の数を調べる。
+- 近傍の未訪問都市が少ない場合、その都市は後回しにすると取り残され、大きなジャンプが発生する可能性が高い。
+- そのため近傍ノード数が少ない都市にボーナスを与えることで、孤立ノードを早めに回収することを試みている。
