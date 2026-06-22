@@ -9,7 +9,7 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
 
 ## 独自のヒューリスティック
 - 自分が最短経路を直感的に考える時、以下の図のように考えて①に行くか②に行くかを考えていることに気づいた。
-<img src="images/fig1.jpg" width="400">
+<img src="images/fig1.jpg" width="350">
 
 - ①に行くか②に行くかを考える時、
   - ①だとCのためにわざわざ左に戻っている
@@ -21,7 +21,7 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
 
 - これをコードに落とし込む時以下のステップで行うことにした
   - まずは各エッジをx,y軸に投射する
-    ![fig1](images/fig3.jpg)
+    <img src="images/fig3.jpg" width="700">
   - その投射ができるだけ重複しないようなノードを選択していく
 - 例えばこの例だと①より②の方が3回以上通っている数が少ないので、②の方が最短経路だと判断する。
 
