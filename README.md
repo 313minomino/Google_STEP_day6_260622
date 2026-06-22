@@ -1,5 +1,8 @@
 # 第５回　Google Mapsはすごい（経路最適化）
 
+改善の履歴
+https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4AOYE/edit?gid=0#gid=0
+
 ## コードの目的
 - N個のノードを順に全て時の最短のルートを発見し、その距離を出力する
 - 独自のヒューリスティックを用いて最適なノードを発見する
