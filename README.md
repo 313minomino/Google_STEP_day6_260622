@@ -15,7 +15,7 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
   - ②だとBのためにわざわざ上に戻っている
 - ①と②のどちらが最短かを考える時、戻っている長さで比較していた。
 - 例えばこの図であれば、②の方が最短形をになると考えた。
-![fig1](images/fig2.jpg)
+<img src="images/fig2.jpg" width="400">
 
 - これをコードに落とし込む時以下のステップで行うことにした
   - まずは各エッジをx,y軸に投射する
