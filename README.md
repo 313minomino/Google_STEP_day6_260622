@@ -9,7 +9,7 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
 
 ## 独自のヒューリスティック
 - 自分が最短経路を直感的に考える時、以下の図のように考えて①に行くか②に行くかを考えていることに気づいた。
-![fig1](images/fig1.jpg)
+<img src="images/fig1.jpg" width="400">
 - ①に行くか②に行くかを考える時、
   - ①だとCのためにわざわざ左に戻っている
   - ②だとBのためにわざわざ上に戻っている
