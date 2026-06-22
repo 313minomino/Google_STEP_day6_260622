@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-
+from itertools import permutations
 from common import print_tour, read_input
 
 def solve(cities:list) -> list:
@@ -28,11 +28,37 @@ def solve(cities:list) -> list:
         visited.add(next_node)
         tour.append(next_node)
         current = next_node
+    
+    # 重複改善
+    overlap_improved = True
+    while overlap_improved:
+        bad_edge = find_bad_overlap_edge(tour, cities)
+        # 悪い辺がなければ終了
+        if bad_edge is None:
+            break
+        print("変更")
+        overlap_improved_tour = repair_edge(tour, cities, bad_edge)
+        if overlap_improved_tour == tour:
+            print("改善できなかった")
+            break
+        tour = overlap_improved_tour
+    
+    # # おりかえし改善
+    # turn_improved = True
+    # while turn_improved:
+    #     bad_edge = find_bad_turn_edge(tour, cities)
+    #     # 悪い辺がなければ終了
+    #     if bad_edge is None:
+    #         break
+    #     turn_improved_tour = repair_edge(tour, cities, bad_edge)
+    #     if turn_improved_tour == tour:
+    #         break
+    #     tour = turn_improved_tour
 
-    # 2-opt
-    improved = True
-    while improved:
-        improved = two_opt(tour, cities)
+    # # 2-opt
+    # improved = True
+    # while improved:
+    #     improved = two_opt(tour, cities)
 
     # # or-opt
     # improved = True
@@ -61,24 +87,10 @@ def bestscore_node(current:int, cities:list, visited:set, used_edge:list) -> int
     best_score = float('inf')
     next_node = None
     for distance, j in top_candidates:
-        # ペナルティを取得
-        overlap_penalty = (calc_overlap_penalty(current,j,cities,used_edge))**1.5
-        turn_penalty = calc_turn_penalty(current,j,cities,used_edge)
         future_cost_penalty = calc_future_cost_penalty(j, cities, visited)# 負の数
 
         # ペナルティの重みづけ
-        progress = len(visited) / len(cities)
-        OVERLAP_WEIGHT = 1 - 0.8 * progress
-        TURN_WEIGHT    = 0.3 + 0.7 * progress
-
-        # スコアを計算
-        if distance <= 20:
-            score = distance
-        elif future_cost_penalty <= -20:
-            score = distance + future_cost_penalty
-        else:
-            score = distance*(1+OVERLAP_WEIGHT * overlap_penalty + TURN_WEIGHT * turn_penalty)
-        # print(j,"についてスコア",score,"：距離",distance/10,"重複",OVERLAP_WEIGHT * (overlap_penalty),"折り返し",TURN_WEIGHT * turn_penalty)
+        score = distance + future_cost_penalty
 
         # 探索した中で一番スコアが低いものを返す
         if score < best_score:
@@ -94,6 +106,95 @@ def distance_calc(cities:list,node1:int,node2:int) -> float:
     y2 = cities[node2][1]
     distance = ((x1 - x2)**2 + (y1 - y2)**2) ** 0.5
     return distance
+
+# 重複が大きいエッジを見つける
+def find_bad_overlap_edge(tour,cities):
+    used_edges = []
+    worst_penalty = 0
+    worst_index = None
+
+    for i in range(len(tour)-1):
+        a = tour[i]
+        b = tour[i+1]
+
+        penalty = calc_overlap_penalty(a,b,cities,used_edges)
+
+        if penalty > worst_penalty:
+            worst_penalty = penalty
+            worst_index = i
+        used_edges.append((a,b))
+    if worst_penalty > 1:
+        print(worst_penalty)
+        return worst_index
+    return None
+
+# 折り返しが大きいエッジを見つける
+def find_bad_turn_edge(tour,cities):
+    used_edges = []
+    worst_penalty = 0
+    worst_index = None
+
+    for i in range(len(tour)-1):
+        a = tour[i]
+        b = tour[i+1]
+
+        penalty = calc_turn_penalty(a,b,cities,used_edges)
+
+        if penalty > worst_penalty:
+            worst_penalty = penalty
+            worst_index = i
+        used_edges.append((a,b))
+    if worst_penalty > 50:
+        return worst_index
+    return None
+
+# 悪いエッジをよくする
+def repair_edge(tour, cities, bad_index):
+    # bad_index の前後2個ずつを見る
+    start = max(0, bad_index - 2)
+    end = min(len(tour), bad_index + 3)
+
+    section = tour[start:end]
+
+    best_tour = tour[:]
+    best_score = evaluate(tour,cities)
+
+    # 全ての並びを試す
+    for p in permutations(section):
+        candidate = tour[:]
+        candidate[start:end] = p
+
+        score = evaluate(candidate, cities)
+
+        if score < best_score:
+            best_score = score
+            best_tour = candidate
+            print("スコアが良くなった")
+
+    return best_tour
+
+def evaluate(tour, cities):
+    distance_score = tour_distance(tour, cities)
+
+    overlap_score = 0
+    turn_score = 0
+    used_edges = []
+
+    for i in range(len(tour)-1):
+        a = tour[i]
+        b = tour[i+1]
+
+        overlap_score += calc_overlap_penalty(
+            a, b, cities, used_edges
+        )
+
+        turn_score += calc_turn_penalty(
+            a, b, cities, used_edges
+        )
+
+        used_edges.append((a, b))
+
+    return distance_score + 5*overlap_score + turn_score
 
 # 「x軸とy軸への射影で、同じ区間を何度も通りたくない
 # 新しい辺を追加するとき、その辺が今まで通った全ての辺と x軸・y軸上でどれだけ重複するかを計算し、その重複長が小さい候補を優先する」
@@ -262,6 +363,9 @@ def two_opt(tour:list,cities:list) -> list:
                 tour[i+1:j+1] = tour[i+1:j+1][::-1]
                 improved = True
     return improved
+
+
+
 
 # or-opt
 def or_opt(tour:list, cities:list) -> list:
