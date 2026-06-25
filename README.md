@@ -8,6 +8,8 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
 - 独自のヒューリスティックを用いて最適なノードを発見する
 
 ## 独自のヒューリスティック
+- 各エッジをx,y軸に投射し、その投射ができるだけ重複しないようなノードを選択していく方法を実装した。
+
 - 自分が最短経路を直感的に考える時、以下の図のように考えて①に行くか②に行くかを考えていることに気づいた。
 <img src="images/fig1.jpg" width="350">
 
@@ -15,7 +17,7 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
   - ①だとCのためにわざわざ左に戻っている
   - ②だとBのためにわざわざ上に戻っている
 - ①と②のどちらが最短かを考える時、戻っている長さで比較していた。
-- 例えばこの図であれば、②の方が最短形をになると考えた。
+- 例えばこの図であれば、②の方が最短になると直感的に考える。
 
 <img src="images/fig2.jpg" width="400">
 
