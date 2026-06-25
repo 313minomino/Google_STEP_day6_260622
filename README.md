@@ -23,7 +23,9 @@ https://docs.google.com/spreadsheets/d/1PBquRbrWsELnF1rT0sL8z_rSxa3r84MLRgkSUX4A
 
 - これをコードに落とし込む時以下のステップで行うことにした
   - まずは各エッジをx,y軸に投射する
+
     <img src="images/fig3.jpg" width="700">
+    
   - その投射ができるだけ重複しないようなノードを選択していく
 - 例えばこの例だと①より②の方が3回以上通っている数が少ないので、②の方が最短経路だと判断する。
 
